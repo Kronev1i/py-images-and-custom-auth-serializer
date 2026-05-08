@@ -1,3 +1,5 @@
+from django.contrib.auth import authenticate
+from django.utils.translation import gettext as _
 from django.db import transaction
 from rest_framework import serializers
 
@@ -33,7 +35,16 @@ class CinemaHallSerializer(serializers.ModelSerializer):
 class MovieSerializer(serializers.ModelSerializer):
     class Meta:
         model = Movie
-        fields = ("id", "title", "description", "duration", "genres", "actors")
+        fields = (
+            "id",
+            "title",
+            "description",
+            "duration",
+            "genres",
+            "actors",
+            "image"
+        )
+        read_only_fields = ("id", "image")
 
 
 class MovieListSerializer(MovieSerializer):
@@ -51,7 +62,16 @@ class MovieDetailSerializer(MovieSerializer):
 
     class Meta:
         model = Movie
-        fields = ("id", "title", "description", "duration", "genres", "actors")
+        fields = (
+            "id",
+            "title",
+            "description",
+            "duration",
+            "genres",
+            "actors",
+            "image"
+        )
+        read_only_fields = ("id", "image")
 
 
 class MovieSessionSerializer(serializers.ModelSerializer):
@@ -69,6 +89,7 @@ class MovieSessionListSerializer(MovieSessionSerializer):
         source="cinema_hall.capacity", read_only=True
     )
     tickets_available = serializers.IntegerField(read_only=True)
+    movie_image = serializers.ImageField(read_only=True, source="movie.image")
 
     class Meta:
         model = MovieSession
@@ -79,6 +100,7 @@ class MovieSessionListSerializer(MovieSessionSerializer):
             "cinema_hall_name",
             "cinema_hall_capacity",
             "tickets_available",
+            "movie_image"
         )
 
 
@@ -135,3 +157,35 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class OrderListSerializer(OrderSerializer):
     tickets = TicketListSerializer(many=True, read_only=True)
+
+
+class MovieImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = ("id", "image")
+        model = Movie
+
+
+class AuthTokenSerializer(serializers.Serializer):
+    username = None
+    email = serializers.EmailField()
+    password = serializers.CharField(
+        style={"input_type": "password"},
+        trim_whitespace=False
+    )
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        password = attrs.get("password")
+        if email and password:
+            user = authenticate(
+                request=self.context.get("request"),
+                email=email,
+                password=password
+            )
+            if user:
+                attrs["user"] = user
+                return attrs
+            msg = _("Unable to authenticate with provided credentials.")
+            raise serializers.ValidationError(msg, code="authentication")
+        msg = _("Unable to verify your account.")
+        raise serializers.ValidationError(msg, code="authentication")

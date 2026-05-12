@@ -1,5 +1,3 @@
-from django.contrib.auth import authenticate
-from django.utils.translation import gettext as _
 from django.db import transaction
 from rest_framework import serializers
 
@@ -163,29 +161,3 @@ class MovieImageSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ("id", "image")
         model = Movie
-
-
-class AuthTokenSerializer(serializers.Serializer):
-    username = None
-    email = serializers.EmailField()
-    password = serializers.CharField(
-        style={"input_type": "password"},
-        trim_whitespace=False
-    )
-
-    def validate(self, attrs):
-        email = attrs.get("email")
-        password = attrs.get("password")
-        if email and password:
-            user = authenticate(
-                request=self.context.get("request"),
-                email=email,
-                password=password
-            )
-            if user:
-                attrs["user"] = user
-                return attrs
-            msg = _("Unable to authenticate with provided credentials.")
-            raise serializers.ValidationError(msg, code="authentication")
-        msg = _("Unable to verify your account.")
-        raise serializers.ValidationError(msg, code="authentication")
